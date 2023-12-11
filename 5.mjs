@@ -1,5 +1,3 @@
-import { performance } from "node:perf_hooks";
-
 const input = `seeds: 202517468 131640971 1553776977 241828580 1435322022 100369067 2019100043 153706556 460203450 84630899 3766866638 114261107 1809826083 153144153 2797169753 177517156 2494032210 235157184 856311572 542740109
 
 seed-to-soil map:
@@ -237,114 +235,78 @@ const parseInput = (input) => {
   return { seeds, transformations };
 };
 
-const solve1 = (input) => {
-  const { seeds, transformations } = parseInput(input);
-  let numsIm = seeds.reduce(
-    (acc, num) => ({ ...acc, [num]: (acc[num] ?? 0) + 1 }),
-    {},
-  );
-  let numsOut = {};
-  for (const transformation of transformations) {
-    for (const {
-      source: [min, max],
-      offset,
-    } of transformation) {
-      for (const [numStr, qty] of Object.entries(numsIm)) {
-        const num = +numStr;
-        if (num >= min && num < max) {
-          const newNum = num + offset;
-          numsOut[newNum] = (numsOut[newNum] ?? 0) + qty;
-          delete numsIm[num];
-        }
-      }
+const transform = (num, transformation) => {
+  for (const {
+    source: [min, max],
+    offset,
+  } of transformation) {
+    if (num >= min && num < max) {
+      return num + offset;
     }
-    // move unchanged
-    for (const [num, qty] of Object.entries(numsIm)) {
-      numsOut[num] = (numsOut[num] ?? 0) + qty;
-    }
-    numsIm = numsOut;
-    numsOut = {};
   }
-  return Math.min(...Object.keys(numsIm).map(Number));
+
+  return num;
 };
 
-const getIntersection = ([s1p1, s1p2], [s2p1, s2p2]) => {
-  if (s1p1 >= s2p1 && s1p1 < s2p2 && s1p2 > s2p1 && s1p2 <= s2p2) {
-    // s1 contained by s2 or equal
-    return {
-      toTransform: [[s1p1, s1p2]],
-      leftovers: [],
-    };
+const solve1 = (input) => {
+  const { seeds, transformations } = parseInput(input);
+  let numsIn = new Set(seeds);
+  let numsOut = new Set();
+  for (const transformation of transformations) {
+    for (const num of numsIn) {
+      numsOut.add(transform(num, transformation));
+    }
+    numsIn = numsOut;
+    numsOut = new Set();
   }
-  if (s2p1 > s1p1 && s2p1 < s1p2 && s2p2 > s1p1 && s2p2 < s1p2) {
-    // s2 contained by s1
-    return {
-      toTransform: [[s2p1, s2p2 + 1]],
-      leftovers: [
-        [s1p1, s2p1],
-        [s2p2 + 1, s1p2],
-      ],
-    };
+  return Math.min(...numsIn);
+};
+
+const isValid = ([p1, p2]) => p2 > p1;
+
+const getIntersected = ([a1, a2], [b1, b2]) => {
+  const left = [a1, Math.min(b1, a2)];
+  const mid = [Math.max(a1, b1), Math.min(a2, b2)];
+  const right = [Math.max(a1, b2), a2];
+
+  return { left, mid, right };
+};
+
+const applyTransformation = (segments, transformation) => {
+  const transformed = [];
+  let untransformed = segments.slice();
+  for (const { source: s2, offset } of transformation) {
+    const nextUntransformed = [];
+    while (untransformed.length) {
+      const s1 = untransformed.pop();
+
+      const { left, mid, right } = getIntersected(s1, s2);
+      if (isValid(left)) {
+        nextUntransformed.push(left);
+      }
+      if (isValid(mid)) {
+        transformed.push([mid[0] + offset, mid[1] + offset]);
+      }
+      if (isValid(right)) {
+        nextUntransformed.push(right);
+      }
+    }
+    untransformed = nextUntransformed;
   }
-  if (s1p1 >= s2p1 && s1p1 < s2p2) {
-    // left part of s1 in s2
-    return {
-      toTransform: [[s1p1, s2p2]],
-      leftovers: [[s2p2, s1p2]],
-    };
-  }
-  if (s1p2 > s2p1 && s1p2 <= s2p2) {
-    // right part of s1 in s2
-    return {
-      toTransform: [[s2p1, s1p2]],
-      leftovers: [[s1p1, s2p1]],
-    };
-  }
-  return {
-    toTransform: [],
-    leftovers: [[s1p1, s1p2]],
-  };
+  return transformed.concat(untransformed);
 };
 
 const solve2 = (input) => {
   const { seeds, transformations } = parseInput(input);
-  let segmentsIn = [];
+  let segments = [];
   for (let i = 0; i < seeds.length; i += 2) {
-    segmentsIn.push([seeds[i], seeds[i] + seeds[i + 1]]);
+    segments.push([seeds[i], seeds[i] + seeds[i + 1]]);
   }
-  let segmentsOut = [];
   for (const transformation of transformations) {
-    while (segmentsIn.length) {
-      let transformed = false;
-      const s1 = segmentsIn.pop();
-
-      for (const { source: s2, offset } of transformation) {
-        const { toTransform, leftovers } = getIntersection(s1, s2);
-        if (toTransform.length) {
-          transformed = true;
-          segmentsOut.push(
-            ...toTransform.map(([p1, p2]) => [p1 + offset, p2 + offset]),
-          );
-          segmentsIn.push(...leftovers);
-          break;
-        }
-      }
-
-      if (!transformed) {
-        segmentsOut.push(s1);
-      }
-    }
-
-    segmentsIn = segmentsOut;
-    segmentsOut = [];
+    segments = applyTransformation(segments, transformation);
   }
-  return Math.min(...segmentsIn.map((seg) => seg[0]));
+  return Math.min(...segments.map((seg) => seg[0]));
 };
 
-performance.mark("p2");
+console.log(solve1(input));
 console.log(solve2(input));
-performance.measure("p2-measure", "p2");
-console.log(
-  "Duration (ms):",
-  performance.getEntriesByName("p2-measure")[0].duration,
-);
