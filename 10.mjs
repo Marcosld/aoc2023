@@ -141,8 +141,6 @@ J7F.FFJ-L--L-L7||J.7|FJJFJ.7JLL..L7.|JLL|L-JF||-F|7FFLJF-J||F7FJJF77LJJ|FJ7..-7-
 J7|F|J-FJL-L7LL|J.J.|7.|F-7JFL|-7F--JF7.L7FL7F|JF-J-JF-JF7|||||LF-|-LJL|-FFJ7.|.LF|-LJ|LF7|FFJL77F------JL-----7L7|7|L7F--77LLFL-7.||LFJJ|7J
 |J-F|JJJJ|JLJ.LJ-7JF7-L-7LL7JLLJL7JLLJJ|L|--LL--|-J.FL--JLJLJLJ-|LF7J|.|.F7L--LL-|J7.LJL--FJL--J-L-------------JLLJ-JJ|.LLL-7--JJJ--7-FJ-LJ-`;
 
-const pipes = new Set(["|", "-", "L", "J", "7", "F"]);
-
 const getStartingPos = (grid) => {
   for (let i = 0; i < grid.length; i++) {
     for (let j = 0; j < grid[i].length; j++) {
