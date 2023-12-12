@@ -999,143 +999,58 @@ const input = `..?##?.?.??#???#? 3,7
 .?????????? 1,2,1
 ????#?.??? 1,3,1`;
 
-const isValid = (groups, constraint, isFinished) => {
-  if (isFinished) {
-    if (groups.length !== constraint.length) {
-      return false;
+const memoize = (fn) => {
+  const cache = {};
+  return (...args) => {
+    const key = JSON.stringify(args);
+    if (!(key in cache)) {
+      cache[key] = fn(...args);
     }
-    for (const [i, n] of groups.entries()) {
-      if (n !== constraint[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-  // not finished
-  if (groups.length > constraint.length) {
-    return false;
-  }
-  for (const [i, n] of groups.entries()) {
-    if (n > constraint[i]) {
-      return false;
-    }
-    if (i + 1 in groups && n !== constraint[i]) {
-      return false;
-    }
-  }
-  return true;
+    return cache[key];
+  };
 };
 
-const getPossibleCombinations = (
-  line,
-  constraint,
-  hashedResults = {},
-  groups = [],
-  i = 0,
-) => {
-  const hashKey = `${JSON.stringify(groups)};${JSON.stringify(
-    line.slice(i - 1),
-  )}`;
-
-  if (hashKey in hashedResults) {
-    return hashedResults[hashKey];
+const getPossibleCombinations = memoize((line, constraints) => {
+  if (!line.length) {
+    return !constraints.length ? 1 : 0;
   }
 
-  if (i >= line.length) {
-    if (isValid(groups, constraint, true)) {
-      return 1;
+  if (!constraints.length) {
+    return line.includes("#") ? 0 : 1;
+  }
+
+  if (line[0] === "#") {
+    const [constraint, ...newConstraints] = constraints;
+    const match = line.match(
+      new RegExp(`^[#?]{${constraint}}([.?]\\.*(.*)|$)`),
+    );
+    if (!match) {
+      return 0;
     }
-    return 0;
+    return getPossibleCombinations(match[2] ?? "", newConstraints);
   }
 
-  if (!isValid(groups, constraint, false)) {
-    return 0;
-  }
+  return (
+    getPossibleCombinations("#" + line.slice(1), constraints) +
+    getPossibleCombinations(line.replace(/\?[.]*/, ""), constraints)
+  );
+});
 
-  const nextI = i + 1;
-  const modifiedGroups =
-    !line[i - 1] || line[i - 1] === "."
-      ? groups.concat(1)
-      : groups.toSpliced(-1, 1, groups.at(-1) + 1);
-
-  if (line[i] === "#") {
-    const result = getPossibleCombinations(
-      line,
-      constraint,
-      hashedResults,
-      modifiedGroups,
-      nextI,
-    );
-    hashedResults[hashKey] = result;
-    return result;
-  }
-
-  if (line[i] === ".") {
-    const result = getPossibleCombinations(
-      line,
-      constraint,
-      hashedResults,
-      groups,
-      nextI,
-    );
-    hashedResults[hashKey] = result;
-    return result;
-  }
-
-  const result =
-    getPossibleCombinations(
-      line.toSpliced(i, 1, "#"),
-      constraint,
-      hashedResults,
-      modifiedGroups,
-      nextI,
-    ) +
-    getPossibleCombinations(
-      line.toSpliced(i, 1, "."),
-      constraint,
-      hashedResults,
-      groups,
-      nextI,
-    );
-
-  hashedResults[hashKey] = result;
-
-  return result;
-};
-
-const solve1 = (input) => {
-  const linesWithConstraints = input.split("\n").map((line) => {
-    const [p1, p2] = line.split(" ");
-    return [p1.split(""), p2.split(",").map(Number)];
-  });
+const solve = (input, repeats) => {
   let result = 0;
-  for (const [line, constraint] of linesWithConstraints) {
-    result += getPossibleCombinations(line, constraint);
+  for (const inputLine of input.split("\n")) {
+    const [p1, p2] = inputLine.split(" ");
+    const line = `${p1}?`.repeat(repeats).slice(0, -1).replace(/^\.+/, "");
+    const constraints = `${p2},`
+      .repeat(repeats)
+      .slice(0, -1)
+      .split(",")
+      .map(Number);
+
+    result += getPossibleCombinations(line, constraints);
   }
   return result;
 };
 
-const solve2 = (input) => {
-  const linesWithConstraints = input.split("\n").map((line) => {
-    const [p1, p2] = line.split(" ");
-    return [
-      `${p1}?`.repeat(5).slice(0, -1).split(""),
-      `${p2},`.repeat(5).split(",").slice(0, -1).map(Number),
-    ];
-  });
-
-  let result = 0;
-  for (const [line, constraint] of linesWithConstraints) {
-    const hashedResults = {};
-    const combinations = getPossibleCombinations(
-      line,
-      constraint,
-      hashedResults,
-    );
-    result += combinations;
-  }
-  return result;
-};
-
-console.log(solve1(input));
-console.log(solve2(input));
+console.log(solve(input, 1));
+console.log(solve(input, 5));
