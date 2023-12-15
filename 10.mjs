@@ -273,7 +273,7 @@ const getPipeAdjacents = (grid, [i, j]) =>
       [i + 1, j],
       [i, j + 1],
     ],
-  })[grid[i][j]] ?? [];
+  })[grid[i][j]];
 
 const isInBounds = ([i, j], grid) =>
   i >= 0 && i < grid.length && j >= 0 && j < grid[i].length;
@@ -281,111 +281,52 @@ const isInBounds = ([i, j], grid) =>
 const connectsBack = (to, points) =>
   points.some((p) => p[0] === to[0] && p[1] === to[1]);
 
-const solve1 = (input) => {
+const traversePipe = (input, onNode) => {
   const grid = input.split("\n");
   const start = getStartingPos(grid);
-  let d = 0;
   const visited = new Set();
   visited.add(JSON.stringify(start));
-  let nodes = getStraightAdjacentPositions(...start)
+  let nextNode = getStraightAdjacentPositions(...start)
     .filter((pos) => isInBounds(pos, grid))
-    .filter((pos) => {
+    .find((pos) => {
       const pipeAdjacents = getPipeAdjacents(grid, pos);
       return connectsBack(start, pipeAdjacents);
     });
-  while (true) {
-    d++;
-    let nextNodes = [];
-    for (const node of nodes) {
-      visited.add(JSON.stringify(node));
-      const nextNode = getPipeAdjacents(grid, node)
-        .filter((pos) => !visited.has(JSON.stringify(pos)))
-        .at(0);
-      nextNodes.push(nextNode);
-    }
-    if (
-      nextNodes[0][0] === nextNodes[1][0] &&
-      nextNodes[0][1] === nextNodes[1][1]
-    ) {
-      return d + 1;
-    }
-    nodes = nextNodes;
+  onNode(start);
+  while (nextNode) {
+    onNode(nextNode);
+    visited.add(JSON.stringify(nextNode));
+    nextNode = getPipeAdjacents(grid, nextNode).find(
+      (pos) => !visited.has(JSON.stringify(pos)),
+    );
   }
 };
 
-const traverseAllNeighbours = ([i, j], grid) => {
-  let areWithinLoop = undefined;
+const greedyMarkAllNeighbours = (point, grid, char) => {
   const visited = new Set();
-  visited.add(JSON.stringify([i, j]));
-  const nextNodes = getStraightAdjacentPositions(i, j);
+  const nextNodes = [point];
   while (nextNodes.length) {
     const [i, j] = nextNodes.pop();
     if (visited.has(JSON.stringify([i, j]))) {
       continue;
     }
     if (!isInBounds([i, j], grid)) {
-      areWithinLoop = false;
-      continue;
+      return false;
     }
     if (grid[i][j] !== ".") {
       continue;
     }
-    console.assert(grid[i][j] === ".", grid[i][j]);
+    grid[i][j] = char;
     visited.add(JSON.stringify([i, j]));
     nextNodes.push(...getStraightAdjacentPositions(i, j));
   }
-  return { areWithinLoop, neighbours: [...visited] };
+  return true;
 };
 
-const getZoneWithin = (enclosingGrid, nodesByZone) => {
-  for (const [i, line] of enclosingGrid.entries()) {
-    for (const [j, c] of line.entries()) {
-      if (c !== "x") {
-        const { areWithinLoop, neighbours } = traverseAllNeighbours(
-          [i, j],
-          enclosingGrid,
-        );
-        if (!areWithinLoop) {
-          for (const neighbour of neighbours) {
-            if (nodesByZone[0].has(neighbour)) {
-              return 1;
-            }
-            if (nodesByZone[1].has(neighbour)) {
-              return 0;
-            }
-          }
-        }
-      }
-    }
-  }
-};
-
-const greedyMarkAllNeighbours = ([i, j], grid) => {
-  let areWithinLoop = true;
-  const visited = new Set();
-  visited.add(JSON.stringify([i, j]));
-  const nextNodes = getStraightAdjacentPositions(i, j);
-  while (nextNodes.length) {
-    const [i, j] = nextNodes.pop();
-    if (visited.has(JSON.stringify([i, j]))) {
-      continue;
-    }
-    if (!isInBounds([i, j], grid)) {
-      console.assert(false, "not in bounds!!");
-      areWithinLoop = false;
-      continue;
-    }
-    if (grid[i][j] !== ".") {
-      continue;
-    }
-    console.assert(grid[i][j] === ".", grid[i][j]);
-    visited.add(JSON.stringify([i, j]));
-    nextNodes.push(...getStraightAdjacentPositions(i, j));
-  }
-  for (const nodeStr of visited) {
-    const [i, j] = JSON.parse(nodeStr);
-    grid[i][j] = areWithinLoop ? "i" : "o";
-  }
+const solve1 = (input) => {
+  let count = 0;
+  traversePipe(input, () => count++);
+  return Math.ceil(count / 2);
 };
 
 const solve2 = (input) => {
@@ -394,61 +335,35 @@ const solve2 = (input) => {
     .fill(0)
     .map(() => Array.from({ length: grid[0].length }).fill("."));
 
-  const start = getStartingPos(grid);
+  traversePipe(input, ([i, j]) => {
+    enclosingGrid[i][j] = "x";
+  });
 
-  const visited = new Set();
-  visited.add(JSON.stringify(start));
-  enclosingGrid[start[0]][start[1]] = "x";
+  let lastNode;
+  const exploringZones = new Set(["A", "B"]);
+  const nodesByZone = { A: new Set(), B: new Set() };
 
-  let nextNode = getStraightAdjacentPositions(...start)
-    .filter((pos) => isInBounds(pos, grid))
-    .filter((pos) => {
-      const pipeAdjacents = getPipeAdjacents(grid, pos);
-      return connectsBack(start, pipeAdjacents);
-    })
-    .at(0);
-  let lastNode = start;
-
-  const nodesByZone = [new Set(), new Set()];
-  do {
-    enclosingGrid[nextNode[0]][nextNode[1]] = "x";
-    visited.add(JSON.stringify(nextNode));
-    const { A, B } = getPipeBounding(grid, nextNode, lastNode);
-
-    for (const node of A) {
-      nodesByZone[0].add(JSON.stringify(node));
-    }
-    for (const node of B) {
-      nodesByZone[1].add(JSON.stringify(node));
-    }
-
-    lastNode = nextNode;
-    nextNode = getPipeAdjacents(grid, nextNode)
-      .filter((pos) => !visited.has(JSON.stringify(pos)))
-      .at(0);
-  } while (nextNode);
-  console.log(enclosingGrid.map((line) => line.join("")));
-
-  // const zoneWithin = getZoneWithin(enclosingGrid, nodesByZone);
-
-  for (const node of nodesByZone[0]) {
-    const [i, j] = JSON.parse(node);
-    if (isInBounds([i, j], enclosingGrid) && enclosingGrid[i][j] === ".") {
-      greedyMarkAllNeighbours([i, j], enclosingGrid);
-    }
-  }
-
-  console.log(enclosingGrid.map((line) => line.join("")));
-
-  let result = 0;
-  for (const line of enclosingGrid) {
-    for (const c of line) {
-      if (c === "i") {
-        result++;
+  traversePipe(input, ([i, j]) => {
+    if (lastNode) {
+      const pipeBounding = getPipeBounding(grid, [i, j], lastNode);
+      for (const zone of exploringZones) {
+        for (const node of pipeBounding[zone]) {
+          nodesByZone[zone].add(JSON.stringify(node));
+          if (!greedyMarkAllNeighbours(node, enclosingGrid, zone)) {
+            exploringZones.delete(zone);
+          }
+        }
       }
     }
-  }
-  return result;
+    lastNode = [i, j];
+  });
+
+  const charToCount = exploringZones.keys().next().value;
+
+  return enclosingGrid.reduce(
+    (acc, line) => acc + line.filter((c) => c === charToCount).length,
+    0,
+  );
 };
 
 console.log(solve1(input));
