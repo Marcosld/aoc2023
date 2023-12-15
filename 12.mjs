@@ -1036,126 +1036,6 @@ const getPossibleCombinations = memoize((line, constraints) => {
   );
 });
 
-const Bst = () => {
-  const Node = (data, qty) => {
-    return {
-      data,
-      qty,
-      left: null,
-      right: null,
-    };
-  };
-
-  const bst = {
-    root: null,
-  };
-
-  return {
-    push(data, qty = 1) {
-      const [line, constraints] = data;
-      let node = bst.root;
-      while (true) {
-        const [nodeLine, nodeConstraints] = node.data;
-        if (
-          line === nodeLine &&
-          constraints.every((c, i) => nodeConstraints[i] === c)
-        ) {
-          node.qty += qty;
-          return;
-        }
-        if (line.length < nodeLine.length) {
-          if (!node.left) {
-            node.left = Node(data, qty);
-            break;
-          }
-          node = node.left;
-          break;
-        }
-        if (!node.right) {
-          node.right = Node(data, qty);
-          break;
-        }
-        node = node.right;
-      }
-    },
-    pop() {
-      if (!bst.root) {
-        return null;
-      }
-      if (!bst.root.left) {
-        const node = bst.root;
-        bst.root = null;
-        return node;
-      }
-      let node = bst.root;
-      while (node.left.left) {
-        node = node.left;
-      }
-      const rNode = node.left;
-      node.left = null;
-      return rNode;
-    },
-    hasElements() {
-      return !!bst.root;
-    },
-  };
-};
-
-const traverseCombinations = (origLine, origConstraints) => {
-  const queue = new Map();
-  queue.set(JSON.stringify([origLine, origConstraints]), 1);
-
-  const calculated = new Set(); // todo: remove
-
-  let result = 0;
-  while (queue.size) {
-    const [key, qty] = queue.entries().next().value;
-    queue.delete(key);
-
-    const [line, constraints] = JSON.parse(key);
-
-    if (!line.length) {
-      if (calculated.has(key)) {
-        // console.log("repeated!!", key);
-      }
-      calculated.add(key);
-      result += !constraints.length * qty;
-      continue;
-    }
-
-    if (!constraints.length) {
-      if (calculated.has(key)) {
-        // console.log("repeated!!", key);
-      }
-      calculated.add(key);
-      result += !line.includes("#") * qty;
-      continue;
-    }
-
-    if (line[0] === "#") {
-      const [constraint, ...newConstraints] = constraints;
-      const match = line.match(
-        new RegExp(`^[#?]{${constraint}}([.?]\\.*(.*)|$)`),
-      );
-      if (!match) {
-        continue;
-      }
-      const newKey = JSON.stringify([match[2] ?? "", newConstraints]);
-      queue.set(newKey, (queue.get(newKey) ?? 0) + qty);
-      continue;
-    }
-
-    const k1 = JSON.stringify(["#" + line.slice(1), constraints]);
-    const k2 = JSON.stringify([line.replace(/\?[.]*/, ""), constraints]);
-
-    for (const k of [k1, k2]) {
-      queue.set(k, (queue.get(k) ?? 0) + qty);
-    }
-  }
-
-  return result;
-};
-
 const solve = (input, repeats) => {
   let result = 0;
   for (const inputLine of input.split("\n")) {
@@ -1167,7 +1047,7 @@ const solve = (input, repeats) => {
       .split(",")
       .map(Number);
 
-    result += traverseCombinations(line, constraints);
+    result += getPossibleCombinations(line, constraints);
   }
   return result;
 };
