@@ -151,7 +151,7 @@ const getStartingPos = (grid) => {
   }
 };
 
-const getPipeBounding = (grid, [i, j], [li, lj]) =>
+const getPipeSurrounding = (grid, [i, j], [li, lj]) =>
   ({
     "|": {
       1: {
@@ -302,25 +302,22 @@ const traversePipe = (input, onNode) => {
   }
 };
 
-const greedyMarkAllNeighbours = (point, grid, char) => {
-  const visited = new Set();
+const getBoundedCount = (point, grid) => {
+  let count = 0;
   const nextNodes = [point];
   while (nextNodes.length) {
     const [i, j] = nextNodes.pop();
-    if (visited.has(JSON.stringify([i, j]))) {
-      continue;
-    }
     if (!isInBounds([i, j], grid)) {
-      return false;
+      return -1;
     }
     if (grid[i][j] !== ".") {
       continue;
     }
-    grid[i][j] = char;
-    visited.add(JSON.stringify([i, j]));
+    count++;
+    grid[i][j] = "x";
     nextNodes.push(...getStraightAdjacentPositions(i, j));
   }
-  return true;
+  return count;
 };
 
 const solve1 = (input) => {
@@ -340,17 +337,17 @@ const solve2 = (input) => {
   });
 
   let lastNode;
-  const exploringZones = new Set(["A", "B"]);
-  const nodesByZone = { A: new Set(), B: new Set() };
+  const countByZone = { A: 0, B: 0 };
 
   traversePipe(input, ([i, j]) => {
     if (lastNode) {
-      const pipeBounding = getPipeBounding(grid, [i, j], lastNode);
-      for (const zone of exploringZones) {
+      const pipeBounding = getPipeSurrounding(grid, [i, j], lastNode);
+      for (const zone of Object.keys(countByZone)) {
         for (const node of pipeBounding[zone]) {
-          nodesByZone[zone].add(JSON.stringify(node));
-          if (!greedyMarkAllNeighbours(node, enclosingGrid, zone)) {
-            exploringZones.delete(zone);
+          const boundedCount = getBoundedCount(node, enclosingGrid, zone);
+          countByZone[zone] += boundedCount;
+          if (boundedCount === -1) {
+            delete countByZone[zone];
           }
         }
       }
@@ -358,12 +355,7 @@ const solve2 = (input) => {
     lastNode = [i, j];
   });
 
-  const charToCount = exploringZones.keys().next().value;
-
-  return enclosingGrid.reduce(
-    (acc, line) => acc + line.filter((c) => c === charToCount).length,
-    0,
-  );
+  return Object.values(countByZone)[0];
 };
 
 console.log(solve1(input));
