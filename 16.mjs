@@ -54,22 +54,15 @@ const solve1 = (input) => solve(input, Beam(0, 0, 0, 1));
 
 const solve2 = (input) => {
   const grid = input.split("\n");
-  let maxEnergized = 0;
-  for (let i = 0; i < grid.length; i++) {
-    maxEnergized = Math.max(maxEnergized, solve(input, Beam(i, 0, 0, 1)));
-    maxEnergized = Math.max(
-      maxEnergized,
+  // as it is a square
+  return Math.max(
+    ...grid.flatMap((_, i) => [
+      solve(input, Beam(i, 0, 0, 1)),
       solve(input, Beam(i, grid[i].length - 1, 0, -1)),
-    );
-  }
-  for (let j = 0; j < grid[0].length; j++) {
-    maxEnergized = Math.max(maxEnergized, solve(input, Beam(0, j, 1, 0)));
-    maxEnergized = Math.max(
-      maxEnergized,
-      solve(input, Beam(grid.length - 1, j, -1, 0)),
-    );
-  }
-  return maxEnergized;
+      solve(input, Beam(0, i, 1, 0)),
+      solve(input, Beam(grid.length - 1, i, -1, 0)),
+    ]),
+  );
 };
 
 const input = readInput(import.meta);
