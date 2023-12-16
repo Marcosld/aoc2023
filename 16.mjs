@@ -54,7 +54,7 @@ const solve1 = (input) => solve(input, Beam(0, 0, 0, 1));
 
 const solve2 = (input) => {
   const grid = input.split("\n");
-  // as it is a square
+  // as it is a square grid
   return Math.max(
     ...grid.flatMap((_, i) => [
       solve(input, Beam(i, 0, 0, 1)),
