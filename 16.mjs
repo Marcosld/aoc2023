@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import { readInput } from "./utils.mjs";
 
 const Beam = (i, j, di, dj) => [
   [i, j],
@@ -17,35 +17,14 @@ const addToSeen = (pos, dir, beamsSeen) =>
   beamsSeen.add(JSON.stringify([pos, dir]));
 
 const moveBeam = ([i, j], [di, dj], grid) => {
-  const c = grid[i][j];
-  const unreflectedBeam = Beam(i + di, j + dj, di, dj);
-  switch (c) {
-    case ".": {
-      return [unreflectedBeam];
-    }
-    case "|": {
-      if (dj === 0) {
-        // from top or bottom
-        return [unreflectedBeam];
-      }
-      // from left or right
-      return [reflectBeam([i, j], [1, 0]), reflectBeam([i, j], [-1, 0])];
-    }
-    case "-": {
-      if (di === 0) {
-        // from left or right
-        return [unreflectedBeam];
-      }
-      // from top or bottom
-      return [reflectBeam([i, j], [0, 1]), reflectBeam([i, j], [0, -1])];
-    }
-    case "/": {
-      return [reflectBeam([i, j], [-dj, -di])];
-    }
-    case "\\": {
-      return [reflectBeam([i, j], [dj, di])];
-    }
-  }
+  if (grid[i][j] === "|" && dj !== 0)
+    return [reflectBeam([i, j], [1, 0]), reflectBeam([i, j], [-1, 0])];
+  if (grid[i][j] === "-" && di !== 0)
+    return [reflectBeam([i, j], [0, 1]), reflectBeam([i, j], [0, -1])];
+  if (grid[i][j] === "/") return [reflectBeam([i, j], [-dj, -di])];
+  if (grid[i][j] === "\\") return [reflectBeam([i, j], [dj, di])];
+
+  return [Beam(i + di, j + dj, di, dj)];
 };
 
 const solve = (input, initialBeam) => {
@@ -93,7 +72,7 @@ const solve2 = (input) => {
   return maxEnergized;
 };
 
-const input = fs.readFileSync("16.in", "utf8");
+const input = readInput(import.meta);
 
 console.log(solve1(input));
 console.log(solve2(input));
