@@ -3,7 +3,7 @@ import fs from "node:fs";
 
 export const readInput = (importMeta) => {
   return fs.readFileSync(
-    `${path.basename(importMeta.url, path.extname(importMeta.url))}.txt`,
+    `${path.basename(importMeta.url, path.extname(importMeta.url))}.in`,
     "utf8",
   );
 };
