@@ -29,18 +29,14 @@ const getNeighbours = (node1, maxStraight, minStraight, I, J) =>
     .map(advance)
     .filter(([i, j]) => inBounds([i, j], I, J));
 
-const insort = (arr, node, score, low = 0, high = arr.length) => {
-  const mid = Math.floor((low + high) / 2);
-  if (high <= low) {
-    return arr[mid] && score >= arr[mid][1]
-      ? arr.splice(low + 1, 0, [node, score])
-      : arr.splice(low, 0, [node, score]);
+const insort = (arr, el, val) => {
+  arr.push([el, val]);
+  for (let i = arr.length - 1; i > 0 && arr[i][1] < arr[i - 1][1]; i--) {
+    let tmp = arr[i];
+    arr[i] = arr[i - 1];
+    arr[i - 1] = tmp;
   }
-  const [, midScore] = arr[mid];
-  if (score > midScore) {
-    return insort(arr, node, score, mid + 1, high);
-  }
-  return insort(arr, node, score, low, mid - 1);
+  return arr;
 };
 
 const solve = (minStraight, maxStraight) => {
