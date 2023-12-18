@@ -19,7 +19,7 @@ const getIntersected = ([a1, a2], [b1, b2]) => {
   return { left, mid, right };
 };
 
-function insort(arr, el, val) {
+const insort = (arr, el, val) => {
   arr.push([el, val]);
   for (let i = arr.length - 1; i > 0 && arr[i][1] < arr[i - 1][1]; i--) {
     let tmp = arr[i];
@@ -27,7 +27,7 @@ function insort(arr, el, val) {
     arr[i - 1] = tmp;
   }
   return arr;
-}
+};
 
 const getNextPoint = ([i, j], [di, dj], count) => {
   const [rI, rJ] = [i + di * count, j + dj * count];
