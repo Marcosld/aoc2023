@@ -2,36 +2,38 @@ import { readInput } from "./utils.mjs";
 
 const input = readInput(import.meta);
 
-const BC_NAME = "broadcaster";
-const LAST_CONJ_MOD_NAME = "gq";
-
 const parseInput = (input) => {
   const config = {};
+  let targetConjModule;
   let initialModules;
 
   for (const line of input.split("\n")) {
     const [p1, p2] = line.split(" -> ");
     const outputs = p2.split(", ");
-    if (p1 === BC_NAME) {
+    if (p1 === "broadcaster") {
       initialModules = outputs;
       continue;
+    }
+    if (outputs.includes("rx")) {
+      targetConjModule = p1.slice(1);
     }
     config[p1.slice(1)] = {
       type: p1[0],
       outputs,
-      state: p1[0] === "%" ? 0 : {},
+      state: 0,
+      iStates: {},
     };
   }
 
   for (const [module, { outputs }] of Object.entries(config)) {
     for (const output of outputs) {
       if (config[output] && config[output].type === "&") {
-        config[output].state[module] = 0;
+        config[output].iStates[module] = 0;
       }
     }
   }
 
-  return { config, initialModules };
+  return { config, initialModules, targetConjModule };
 };
 
 const sendPulses = (signals, config, modTo, signal) =>
@@ -39,47 +41,47 @@ const sendPulses = (signals, config, modTo, signal) =>
     ...config[modTo].outputs.map((modName) => [modName, modTo, signal]),
   );
 
-const pushButton = (config, initialModules) => {
-  const signals = initialModules.map((mod) => [mod, BC_NAME, 0]);
+const pushButton = (config, initialModules, targetConjModule) => {
+  const signals = initialModules.map((mod) => [mod, "broadcaster", 0]);
 
   const signalCount = [1, 0]; // push button signal
-  let toggledGQInput;
+  let toggledTargetInput;
   while (signals.length) {
     const [modTo, modFrom, signal] = signals.shift();
 
     signalCount[+signal]++;
 
-    if (modTo === LAST_CONJ_MOD_NAME && signal === 1) {
-      toggledGQInput = modFrom;
+    if (modTo === targetConjModule && signal === 1) {
+      toggledTargetInput = modFrom;
     }
 
-    if (!config[modTo]) {
+    if (!config[modTo] || (config[modTo].type === "%" && signal === 1)) {
       continue;
     }
 
-    if (config[modTo].type === "%") {
-      if (signal === 1) {
-        continue;
-      }
-      config[modTo].state ^= 1;
-      sendPulses(signals, config, modTo, config[modTo].state);
-    }
+    config[modTo].state ^= 1;
+    config[modTo].iStates[modFrom] = signal;
 
-    if (config[modTo].type === "&") {
-      config[modTo].state[modFrom] = signal;
-      const nextSignal = Object.values(config[modTo].state).every(Boolean) ^ 1;
-      sendPulses(signals, config, modTo, nextSignal);
-    }
+    const nextSignal =
+      config[modTo].type === "%"
+        ? config[modTo].state
+        : Object.values(config[modTo].iStates).every(Boolean) ^ 1;
+
+    sendPulses(signals, config, modTo, nextSignal);
   }
-  return { signalCount, toggledGQInput };
+  return { signalCount, toggledTargetInput };
 };
 
 const solve1 = (input) => {
-  const { config, initialModules } = parseInput(input);
+  const { config, initialModules, targetConjModule } = parseInput(input);
 
   let result = [0, 0];
   for (let i = 0; i < 1000; i++) {
-    const { signalCount } = pushButton(config, initialModules);
+    const { signalCount } = pushButton(
+      config,
+      initialModules,
+      targetConjModule,
+    );
     result[0] += signalCount[0];
     result[1] += signalCount[1];
   }
@@ -87,15 +89,19 @@ const solve1 = (input) => {
 };
 
 const solve2 = (input) => {
-  const { config, initialModules } = parseInput(input);
+  const { config, initialModules, targetConjModule } = parseInput(input);
 
-  let toToggleGQInputs = Object.keys(config[LAST_CONJ_MOD_NAME].state).length;
+  let leftToToggle = Object.keys(config[targetConjModule].iStates).length;
   let result = 1;
 
-  for (let i = 1; toToggleGQInputs > 0; i++) {
-    const { toggledGQInput } = pushButton(config, initialModules, i);
-    if (toggledGQInput) {
-      toToggleGQInputs--;
+  for (let i = 1; leftToToggle > 0; i++) {
+    const { toggledTargetInput } = pushButton(
+      config,
+      initialModules,
+      targetConjModule,
+    );
+    if (toggledTargetInput) {
+      leftToToggle--;
       result *= i;
     }
   }
