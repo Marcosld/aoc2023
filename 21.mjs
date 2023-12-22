@@ -2,9 +2,15 @@ import { readInput, getStraightAdjacentPositions } from "./utils.mjs";
 
 const input = readInput(import.meta);
 
-const solve1 = (input) => {
+const readLines = (input) => {
   const lines = input.split("\n");
   const [I, J] = [lines.length, lines[0].length];
+
+  return { lines, I, J };
+};
+
+const solve1 = (input) => {
+  const { lines, I, J } = readLines(input);
 
   const rocks = new Set();
   let positions = new Set();
@@ -37,9 +43,24 @@ const solve1 = (input) => {
   return positions.size;
 };
 
-const solve2 = (input) => {
-  const lines = input.split("\n");
-  const [I, J] = [lines.length, lines[0].length];
+const isCycling = (arr, cycleLength) => {
+  for (let i = 0; i < cycleLength; i++) {
+    if (arr[i] !== arr[i + cycleLength]) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const addToCircular = (arr, el, cycleLength) => {
+  arr.push(el);
+  if (arr.length > 2 * cycleLength) {
+    arr.shift();
+  }
+};
+
+const solve2 = (input, targetStep) => {
+  const { lines, I, J } = readLines(input);
 
   const rocks = new Set();
   let bounds = new Set();
@@ -54,49 +75,22 @@ const solve2 = (input) => {
     }
   }
 
-  let maxI = I - 1,
-    minI = 0,
-    minJ = 0,
-    maxJ = J - 1;
-
   const transpose = ([i, j]) => {
     const nI = i % I;
     const nJ = j % J;
     return [nI < 0 ? I + nI : nI, nJ < 0 ? J + nJ : nJ];
   };
 
-  const printGrid = () => {
-    for (let i = minI; i < maxI + 1; i++) {
-      let line = "";
-      for (let j = minJ; j < maxJ + 1; j++) {
-        const key = JSON.stringify([i, j]);
-        const transposedKey = JSON.stringify(transpose([i, j]));
-        const c = bounds.has(key) ? "x" : rocks.has(transposedKey) ? "#" : ".";
-        line += c;
-      }
-      console.log(line);
-    }
-  };
-
   let result = [1n, 0n];
 
-  const lastPointVariations = [];
-  const lastDiffVariations = [];
+  const boundPointsVariations = [];
+  const diffVariations = [];
 
   const cycleLength = I;
+  let cycleStart;
 
-  console.time("start");
-  // full for example = 39 / 42
-  // full for input = 7450 / 7421
   let k = 0;
-  for (; k < 1477; k++) {
-    // 270
-    // cycle ends at 139
-    // console.log(`k: ${k}`);
-    // printGrid();
-    // if (k % 1000 === 0) {
-    //   console.timeLog("start", `k: ${k}, bounds size: ${bounds.size}`);
-    // }
+  for (; k < targetStep; k++) {
     const newBounds = new Set();
     const visited = new Set();
     for (const pointStr of bounds) {
@@ -111,55 +105,49 @@ const solve2 = (input) => {
           if (!lastVisited.has(key)) {
             newBounds.add(key);
           }
-
-          minI = Math.min(oI, minI);
-          minJ = Math.min(oJ, minJ);
-          maxI = Math.max(maxI, oI);
-          maxJ = Math.max(maxJ, oJ);
         });
     }
-    const pointVariation = BigInt(newBounds.size - bounds.size);
-    const diffVariation = lastPointVariations.at(-cycleLength)
-      ? BigInt(pointVariation - lastPointVariations.at(-cycleLength))
-      : 0n;
 
-    lastPointVariations.push(pointVariation);
-    if (lastPointVariations.length > cycleLength) {
-      lastPointVariations.shift();
-    }
+    const boundPointsVariation = BigInt(newBounds.size - bounds.size);
+    const boundPointsVariationDiff = BigInt(
+      boundPointsVariation - (boundPointsVariations.at(-cycleLength) ?? 0n),
+    );
 
-    lastDiffVariations.push(diffVariation);
-    if (lastDiffVariations.length > cycleLength) {
-      lastDiffVariations.shift();
-    }
+    addToCircular(boundPointsVariations, boundPointsVariation, cycleLength);
+    addToCircular(diffVariations, boundPointsVariationDiff, cycleLength);
 
-    // console.log(`Diff to last ${cycleLength}th point variation`, diffVariation);
-    // console.log(`Point variation: ${pointVariation}`);
     bounds = newBounds;
     lastVisited = visited;
     result[(k + 1) % 2] += BigInt(newBounds.size);
-    // console.log(`k: ${k}, result: ${result}`);
+
+    if (isCycling(diffVariations, cycleLength)) {
+      if (!cycleStart) {
+        cycleStart = k;
+      }
+      if (k - cycleStart > cycleStart) {
+        // has been cycling for more steps than the step it started cycling (random heuristic xd)
+        k += 1;
+        break;
+      }
+    } else {
+      cycleStart = undefined;
+    }
   }
 
-  // k = 264
   let boundSize = BigInt(bounds.size);
-  for (; k < 26501365; k++) {
-    const index = (k - 36) % cycleLength;
-    lastPointVariations[index] += lastDiffVariations[index];
-    boundSize += lastPointVariations[index];
+  let cycleBoundPointVariations = boundPointsVariations.slice(cycleLength);
+  let cycleDiffVariations = diffVariations.slice(cycleLength);
+
+  const offset = k % cycleLength;
+  for (; k < targetStep; k++) {
+    const index = (k - offset) % cycleLength;
+    cycleBoundPointVariations[index] += cycleDiffVariations[index];
+    boundSize += cycleBoundPointVariations[index];
     result[(k + 1) % 2] += BigInt(boundSize);
-    // console.log(`k: ${k}, result: ${result}`);
   }
-  // console.log(lastPointVariations);
-  // console.log(JSON.stringify(lastDiffVariations));
-  // console.log(k);
 
-  // console.log(bounds.size);
-
-  return result;
+  return result[targetStep % 2];
 };
 
-// console.log(solve1(input));
-console.log(solve2(input));
-
-// steps: 26501365
+console.log(solve1(input));
+console.log(solve2(input, 26501365));
