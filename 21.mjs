@@ -126,7 +126,6 @@ const solve2 = (input, targetStep) => {
       }
       if (k - cycleStart > cycleStart) {
         // has been cycling for more steps than the step it started cycling (random heuristic xd)
-        k += 1;
         break;
       }
     } else {
@@ -138,6 +137,7 @@ const solve2 = (input, targetStep) => {
   let cycleBoundPointVariations = boundPointsVariations.slice(cycleLength);
   let cycleDiffVariations = diffVariations.slice(cycleLength);
 
+  k += 1; // next iteration
   const offset = k % cycleLength;
   for (; k < targetStep; k++) {
     const index = (k - offset) % cycleLength;
@@ -150,4 +150,5 @@ const solve2 = (input, targetStep) => {
 };
 
 console.log(solve1(input));
-console.log(solve2(input, 26501365));
+console.time("run p2");
+console.timeLog("run p2", solve2(input, 26501365));
