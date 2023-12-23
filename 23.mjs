@@ -21,24 +21,24 @@ const getNeighboursP1 = (grid, [i, j]) =>
     })[grid[i][j]] ?? []
   ).filter(isValid(grid));
 
-const getNextVertex = (grid, [i, j], endKey, getNeighbours, visited, d = 0) => {
+const getNextVertex = (grid, [i, j], end, getNeighbours, visited, d = 0) => {
   const neighs = getNeighbours(grid, [i, j]).filter(
     (neigh) => !visited.has(JSON.stringify(neigh)),
   );
 
-  const nodeKey = JSON.stringify([i, j]);
+  const node = JSON.stringify([i, j]);
 
-  if (neighs.length > 1 || nodeKey === endKey) {
-    return [nodeKey, d + 1];
+  if (neighs.length > 1 || node === end) {
+    return [node, d + 1];
   }
 
   if (!neighs.length) {
     return undefined;
   }
 
-  visited.add(nodeKey);
+  visited.add(node);
 
-  return getNextVertex(grid, neighs[0], endKey, getNeighbours, visited, d + 1);
+  return getNextVertex(grid, neighs[0], end, getNeighbours, visited, d + 1);
 };
 
 const findMax = (vertexMap, node, end, visited = new Set(), d = 0) => {
@@ -81,14 +81,12 @@ const solve = (input, getNeighbours) => {
   }
 
   for (const [vertex, adjacents] of vertexMap) {
-    vertexMap.set(
-      vertex,
-      adjacents
-        .map(([i, j]) =>
-          getNextVertex(grid, [i, j], endKey, getNeighbours, new Set([vertex])),
-        )
-        .filter(Boolean),
-    );
+    const adjVertex = adjacents
+      .map(([i, j]) =>
+        getNextVertex(grid, [i, j], endKey, getNeighbours, new Set([vertex])),
+      )
+      .filter(Boolean);
+    vertexMap.set(vertex, adjVertex);
   }
 
   return findMax(vertexMap, startKey, endKey);
