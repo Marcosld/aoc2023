@@ -22,3 +22,16 @@ export const getStraightAdjacentPositions = (i, j) => [
   [i + 1, j],
   [i - 1, j],
 ];
+
+export const timeIt = (fn, name) => {
+  let totalTime = 0;
+  process.on("exit", () => {
+    console.log(`Time taken by ${name}: ${totalTime}`);
+  });
+  return (...args) => {
+    const start = performance.now();
+    const res = fn(...args);
+    totalTime += performance.now() - start;
+    return res;
+  };
+};
