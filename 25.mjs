@@ -1,5 +1,4 @@
 import { readInput } from "./utils.mjs";
-import * as crypto from "crypto";
 
 const input = readInput(import.meta);
 
@@ -38,7 +37,7 @@ const applyKarger = (edges, nodes) => {
   );
 
   while (N > 2) {
-    const i = crypto.randomInt(edges.length);
+    const i = Math.floor(Math.random() * edges.length);
 
     const [s1, s2] = edges[i].map((n) => find(subsets, n));
 
