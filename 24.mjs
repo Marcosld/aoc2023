@@ -1,6 +1,22 @@
-import { readInput, getStraightAdjacentPositions } from "./utils.mjs";
+import { readInput } from "./utils.mjs";
 
 const input = readInput(import.meta);
+
+const parseInput = (input) => {
+  const points = [];
+  const directions = [];
+
+  for (const line of input.split("\n")) {
+    const [x, y, z, dx, dy, dz] = line
+      .split(" @ ")
+      .flatMap((part) => part.split(/,\s+/g).map(Number));
+
+    points.push([x, y, z]);
+    directions.push([dx, dy, dz]);
+  }
+
+  return { points, directions };
+};
 
 const getIntersection = ([m, n], [m2, n2]) => {
   const iX = -(n - n2) / (m - m2);
@@ -9,16 +25,11 @@ const getIntersection = ([m, n], [m2, n2]) => {
 };
 
 const solve1 = (input, minAxis, maxAxis) => {
-  const equations = [];
-  const points = [];
-  for (const line of input.split("\n")) {
-    const [x, y, z, dx, dy, dz] = line
-      .split(" @ ")
-      .flatMap((part) => part.split(/,\s+/g).map(Number));
-
-    equations.push([dy / dx, (-dy / dx) * x + y]);
-    points.push([x, y, z, dx, dy, dz]);
-  }
+  const { points, directions } = parseInput(input);
+  const equations = directions.map(([dx, dy], i) => {
+    const m = dy / dx;
+    return [m, -m * points[i][0] + points[i][1]];
+  });
 
   let result = 0;
   for (let i = 0; i < equations.length; i++) {
@@ -27,7 +38,7 @@ const solve1 = (input, minAxis, maxAxis) => {
       if (
         iX === Infinity ||
         iY === Infinity ||
-        [i, j].some((k) => (points[k][0] - iX) * points[k][3] > 0) || // crossed in past
+        [i, j].some((k) => (points[k][0] - iX) * directions[k][0] > 0) || // crossed in past (what is important is signs)
         [iX, iY].some((axis) => axis < minAxis || axis > maxAxis)
       ) {
         continue;
@@ -38,16 +49,9 @@ const solve1 = (input, minAxis, maxAxis) => {
   return result;
 };
 
-const getIntersection3d = (
-  [x1, y1, z1],
-  [x2, y2, z2],
-  [dx1, dy1, dz1],
-  [dx2, dy2, dz2],
-) => {
+const getIntersection3d = (p1, p2, d1, d2) => {
   // n = s - t
-  const eq1 = [x2 - x1, dx1, -dx2];
-  const eq2 = [y2 - y1, dy1, -dy2];
-  const eq3 = [z2 - z1, dz1, -dz2];
+  const [eq1, eq2, eq3] = [0, 1, 2].map((i) => [p2[i] - p1[i], d1[i], -d2[i]]);
 
   const fac = -eq2[2] / eq1[2];
 
@@ -56,44 +60,30 @@ const getIntersection3d = (
   const res = eq1T.map((n, i) => eq2[i] + n);
 
   const s = Math.floor(res[0] / res[1]);
-  const t1 = Math.floor((eq1[0] - eq1[1] * s) / eq1[2]);
-  const t2 = Math.floor((eq2[0] - eq2[1] * s) / eq2[2]);
-  const t3 = Math.floor((eq3[0] - eq3[1] * s) / eq3[2]);
+  const [t1, t2, t3] = [eq1, eq2, eq3].map((eq) =>
+    Math.floor((eq[0] - eq[1] * s) / eq[2]),
+  );
 
   if (t1 !== t2 || t2 !== t3) {
     return undefined;
   }
 
-  const x = x1 + dx1 * s;
-  const y = y1 + dy1 * s;
-  const z = z1 + dz1 * s;
+  const [iX1, iY1, iZ1] = p1.map((n, i) => n + d1[i] * s);
+  const [iX2, iY2, iZ2] = p2.map((n, i) => n + d2[i] * t1);
 
-  const ox = x2 + dx2 * t1;
-  const oy = y2 + dy2 * t1;
-  const oz = z2 + dz2 * t1;
-
-  if (x !== ox || y !== oy || z !== oz) {
+  if (iX1 !== iX2 || iY1 !== iY2 || iZ1 !== iZ2) {
     return undefined;
   }
 
-  return [x, y, z];
+  return [iX1, iY1, iZ1];
 };
 
 const solve2 = (input) => {
-  const points = [];
-  const directions = [];
-  for (const line of input.split("\n")) {
-    const [x, y, z, dx, dy, dz] = line
-      .split(" @ ")
-      .flatMap((part) => part.split(/,\s+/g).map(Number));
-
-    points.push([x, y, z]);
-    directions.push([dx, dy, dz]);
-  }
+  const { directions, points } = parseInput(input);
 
   const MIN_D = -1000,
     MAX_D = 1000;
-  let possibleVelocities = [];
+  let possibleDs = [];
 
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
@@ -107,24 +97,24 @@ const solve2 = (input) => {
           const pRDList = [];
           for (let posD = MIN_D; posD < MAX_D; posD++) {
             if (xDiff % (posD - dx1) === 0) {
-              if (!possibleVelocities[k]) {
+              if (!possibleDs[k]) {
                 pRDList.push(posD);
                 continue;
               }
-              if (possibleVelocities[k].has(posD)) {
+              if (possibleDs[k].has(posD)) {
                 pRDList.push(posD);
               }
             }
           }
-          possibleVelocities[k] = new Set(pRDList);
+          possibleDs[k] = new Set(pRDList);
         }
       }
     }
   }
 
-  const rdx = possibleVelocities[0].keys().next().value;
-  const rdy = possibleVelocities[1].keys().next().value;
-  const rdz = possibleVelocities[2].keys().next().value;
+  const [rdx, rdy, rdz] = [0, 1, 2].map(
+    (i) => possibleDs[i].keys().next().value,
+  );
 
   const [dx1, dy1, dz1] = directions[0];
   const dirs1 = [dx1 - rdx, dy1 - rdy, dz1 - rdz];
