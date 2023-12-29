@@ -1,5 +1,6 @@
-const input = `Time:        40     81     77     72
-Distance:   219   1012   1365   1089`;
+import { readInput } from "./utils.mjs";
+
+const input = readInput(import.meta);
 
 const parseInput = (input) => {
   const [times, distances] = input
